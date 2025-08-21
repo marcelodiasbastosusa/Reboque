@@ -515,8 +515,30 @@ async def create_tow_request(
     if current_user.role not in [UserRole.CLIENT, UserRole.DEALER]:
         raise HTTPException(status_code=403, detail="Only clients and dealers can create tow requests")
     
+    # Calculate distance and find nearest driver
+    nearest_driver = await find_nearest_available_driver(
+        request_data.pickup_lat, 
+        request_data.pickup_lng
+    )
+    
+    # Calculate price based on nearest driver or admin pricing
+    driver_id = nearest_driver["driver"]["id"] if nearest_driver else None
+    price_calc = await calculate_tow_price(
+        request_data.pickup_lat,
+        request_data.pickup_lng, 
+        request_data.dropoff_lat,
+        request_data.dropoff_lng,
+        driver_id
+    )
+    
+    # Create request with calculated values
     request_dict = request_data.dict()
     request_dict["client_id"] = current_user.id
+    request_dict["distance_miles"] = price_calc["distance_miles"]
+    request_dict["calculated_price"] = price_calc["total_price"]
+    request_dict["current_driver_id"] = driver_id
+    request_dict["negotiation_status"] = "awaiting_driver" if driver_id else "no_drivers_available"
+    request_dict["offer_expires_at"] = datetime.now(timezone.utc) + timedelta(minutes=5) if driver_id else None
     
     tow_request = TowRequest(**request_dict)
     await db.tow_requests.insert_one(tow_request.dict())
