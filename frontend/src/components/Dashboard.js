@@ -232,6 +232,16 @@ const Dashboard = () => {
                       Painel do Motorista
                     </Link>
                   )}
+
+                  {user.role === 'admin' && (
+                    <Link
+                      to="/admin"
+                      className="btn-secondary w-full flex items-center justify-center gap-2 text-center no-underline"
+                    >
+                      <User className="h-5 w-5" />
+                      Painel Administrativo
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>
