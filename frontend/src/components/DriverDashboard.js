@@ -230,69 +230,9 @@ const DriverDashboard = () => {
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Available Requests */}
+            {/* Nearby Requests - New Uber-like System */}
             <div className="space-y-6">
-              <div className="card">
-                <div className="card-header">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Solicitações Disponíveis ({availableRequests.length})
-                  </h3>
-                </div>
-                <div className="card-body">
-                  {availableRequests.length === 0 ? (
-                    <div className="text-center py-8">
-                      <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-500">Nenhuma solicitação disponível no momento</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {availableRequests.slice(0, 5).map((request) => (
-                        <div key={request.id} className="border border-gray-200 rounded-lg p-4">
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <Clock className="h-4 w-4 text-yellow-500" />
-                              <span className="text-sm font-medium text-yellow-600">Pendente</span>
-                            </div>
-                            <span className="text-xs text-gray-500">
-                              {new Date(request.created_at).toLocaleDateString('pt-BR')}
-                            </span>
-                          </div>
-                          
-                          <div className="space-y-2 mb-3">
-                            <p className="text-sm">
-                              <span className="font-medium">De:</span> {request.pickup_address}
-                            </p>
-                            <p className="text-sm">
-                              <span className="font-medium">Para:</span> {request.dropoff_address}
-                            </p>
-                            {request.proposed_price && (
-                              <p className="text-sm font-semibold text-green-600">
-                                R$ {request.proposed_price.toFixed(2)}
-                              </p>
-                            )}
-                          </div>
-                          
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => acceptRequest(request.id)}
-                              disabled={driverProfile?.status !== 'available'}
-                              className="btn-primary btn-sm flex-1"
-                            >
-                              Aceitar
-                            </button>
-                            <Link 
-                              to={`/requests/${request.id}`}
-                              className="btn-secondary btn-sm"
-                            >
-                              Ver
-                            </Link>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
+              <NearbyRequests />
             </div>
 
             {/* My Requests */}
@@ -300,7 +240,7 @@ const DriverDashboard = () => {
               <div className="card">
                 <div className="card-header">
                   <h3 className="text-lg font-semibold text-gray-900">
-                    Meus Trabalhos ({myRequests.length})
+                    {t('myJobs')} ({myRequests.length})
                   </h3>
                 </div>
                 <div className="card-body">
