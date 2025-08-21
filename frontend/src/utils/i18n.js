@@ -174,7 +174,9 @@ const translations = {
     'waitingForClient': 'Waiting for client response',
     'offerAmount': 'Offer Amount',
     'offerMessage': 'Message (Optional)',
-    'sendOffer': 'Send Offer',
+    'offerAccepted': 'Offer accepted successfully!',
+    'negotiationStatus': 'Negotiation Status',
+    'explainYourOffer': 'Explain your offer or add comments...',
     
     'noAssignedJobs': 'You have no assigned jobs',
     'no': 'No',
