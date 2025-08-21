@@ -210,7 +210,10 @@ async def register(user_data: UserCreate):
         user_dict["is_approved"] = False
     
     user = User(**user_dict)
-    await db.users.insert_one(user.dict())
+    # Store user data with hashed password in database
+    user_db_dict = user.dict()
+    user_db_dict["hashed_password"] = hashed_password
+    await db.users.insert_one(user_db_dict)
     
     # Create driver profile if role is driver
     if user_data.role == UserRole.DRIVER:
