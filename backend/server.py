@@ -64,6 +64,38 @@ class DriverStatus(str, Enum):
 
 
 # Models
+class PricingConfig(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    price_per_mile: float = 2.50  # Base price per mile in USD
+    price_per_hour: float = 60.00  # Base price per hour in USD  
+    pickup_fee: float = 25.00  # Base pickup fee in USD
+    updated_by_admin_id: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class DriverPricing(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    driver_user_id: str
+    price_per_mile: float = 2.50  # Driver's custom price per mile
+    pickup_fee: float = 25.00  # Driver's custom pickup fee
+    is_using_base_pricing: bool = True  # If True, uses admin pricing
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class PriceOffer(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    tow_request_id: str
+    offered_by_user_id: str  # Client or driver who made the offer
+    offer_type: str  # "client_offer", "driver_counter", "system_calculated"
+    amount: float
+    message: Optional[str] = None
+    status: str = "pending"  # pending, accepted, rejected, expired
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: Optional[datetime] = None
+
+
 class User(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     email: EmailStr
