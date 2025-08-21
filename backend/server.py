@@ -191,6 +191,18 @@ class TowRequestUpdate(BaseModel):
     driver_location_lat: Optional[float] = None
     driver_location_lng: Optional[float] = None
     notes: Optional[str] = None
+    assigned_by_company: Optional[bool] = None  # Track if company assigned manually
+
+
+class DriverControlUpdate(BaseModel):
+    can_receive_calls: Optional[bool] = None
+    force_assigned_only: Optional[bool] = None
+    is_active_by_company: Optional[bool] = None
+
+
+class CompanyAssignRequest(BaseModel):
+    driver_id: str
+    notes: Optional[str] = None
 
 
 class DriverProfile(BaseModel):
