@@ -168,6 +168,23 @@ class TowRequestCreate(BaseModel):
     notes: Optional[str] = None
 
 
+class PriceOfferCreate(BaseModel):
+    amount: float
+    message: Optional[str] = None
+
+
+class DriverPricingUpdate(BaseModel):
+    price_per_mile: Optional[float] = None
+    pickup_fee: Optional[float] = None
+    is_using_base_pricing: Optional[bool] = None
+
+
+class PricingConfigUpdate(BaseModel):
+    price_per_mile: Optional[float] = None
+    price_per_hour: Optional[float] = None
+    pickup_fee: Optional[float] = None
+
+
 class TowRequestUpdate(BaseModel):
     status: Optional[TowRequestStatus] = None
     assigned_driver_id: Optional[str] = None
