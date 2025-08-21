@@ -132,7 +132,7 @@ const translations = {
     'locationError': 'Could not get your location',
     'geolocationNotSupported': 'Geolocation not supported',
     'errorFetchingRequests': 'Error fetching requests',
-    'unknownError': 'Unknown error',
+    'noAssignedJobs': 'You have no assigned jobs',
     'no': 'No',
     'close': 'Close',
     'confirm': 'Confirm',
