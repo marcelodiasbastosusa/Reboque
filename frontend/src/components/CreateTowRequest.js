@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../App';
+import { useTranslation } from '../hooks/useTranslation';
+import LanguageSelector from './LanguageSelector';
 import { Loader } from '@googlemaps/js-api-loader';
 import { 
   ArrowLeft, 
@@ -15,6 +17,7 @@ import {
 
 const CreateTowRequest = () => {
   const { api } = useAuth();
+  const { t, formatPrice } = useTranslation();
   const navigate = useNavigate();
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
@@ -42,10 +45,24 @@ const CreateTowRequest = () => {
   const [selectingPickup, setSelectingPickup] = useState(true);
 
   useEffect(() => {
-    initializeMap();
+    const initMap = async () => {
+      try {
+        await initializeMap();
+      } catch (err) {
+        console.error('Map initialization error:', err);
+        setError(t('errorLoadingMap'));
+      }
+    };
+    
+    initMap();
   }, []);
 
   const initializeMap = async () => {
+    if (!process.env.REACT_APP_GOOGLE_MAPS_API_KEY) {
+      setError('Google Maps API key not configured');
+      return;
+    }
+
     try {
       const loader = new Loader({
         apiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
@@ -55,8 +72,8 @@ const CreateTowRequest = () => {
 
       const google = await loader.load();
       
-      // Default to São Paulo, Brazil
-      const defaultCenter = { lat: -23.5505, lng: -46.6333 };
+      // Default to a major city
+      const defaultCenter = { lat: 40.7580, lng: -73.9855 }; // NYC Times Square
       
       const mapInstance = new google.maps.Map(mapRef.current, {
         center: defaultCenter,
@@ -88,7 +105,7 @@ const CreateTowRequest = () => {
         handleMapClick(event.latLng, google);
       });
 
-      // Get user's location
+      // Try to get user's location
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (position) => {
@@ -101,12 +118,14 @@ const CreateTowRequest = () => {
           },
           (error) => {
             console.log('Geolocation error:', error);
-          }
+            // Keep default location
+          },
+          { timeout: 5000 }
         );
       }
     } catch (error) {
       console.error('Error loading Google Maps:', error);
-      setError('Erro ao carregar o mapa. Verifique sua conexão.');
+      setError(t('errorLoadingMap'));
     }
   };
 
