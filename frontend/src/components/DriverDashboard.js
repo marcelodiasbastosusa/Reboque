@@ -191,7 +191,7 @@ const DriverDashboard = () => {
                 <div className="card-body">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">Total de Trabalhos</p>
+                      <p className="text-sm text-gray-600 mb-1">{t('totalJobs')}</p>
                       <p className="text-3xl font-bold text-gray-900">{driverProfile.total_jobs}</p>
                     </div>
                     <div className="bg-blue-100 p-3 rounded-full">
@@ -205,7 +205,7 @@ const DriverDashboard = () => {
                 <div className="card-body">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">Avaliação</p>
+                      <p className="text-sm text-gray-600 mb-1">{t('rating')}</p>
                       <p className="text-3xl font-bold text-yellow-600">{driverProfile.rating.toFixed(1)}</p>
                     </div>
                     <div className="bg-yellow-100 p-3 rounded-full">
@@ -219,7 +219,7 @@ const DriverDashboard = () => {
                 <div className="card-body">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">Trabalhos Ativos</p>
+                      <p className="text-sm text-gray-600 mb-1">{t('activeJobs')}</p>
                       <p className="text-3xl font-bold text-purple-600">
                         {myRequests.filter(r => r.status === 'accepted' || r.status === 'on_mission').length}
                       </p>
@@ -232,6 +232,43 @@ const DriverDashboard = () => {
               </div>
             </div>
           )}
+
+          {/* Navigation Tabs */}
+          <div className="flex space-x-1 mb-8 bg-gray-100 p-1 rounded-lg">
+            <button
+              onClick={() => setActiveTab('requests')}
+              className={`px-4 py-2 rounded-md font-medium transition-colors ${
+                activeTab === 'requests'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <Navigation className="h-4 w-4 inline mr-2" />
+              {t('myRequests')}
+            </button>
+            <button
+              onClick={() => setActiveTab('pricing')}
+              className={`px-4 py-2 rounded-md font-medium transition-colors ${
+                activeTab === 'pricing'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <DollarSign className="h-4 w-4 inline mr-2" />
+              {t('myPricing')}
+            </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`px-4 py-2 rounded-md font-medium transition-colors ${
+                activeTab === 'settings'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <Settings className="h-4 w-4 inline mr-2" />
+              {t('settings')}
+            </button>
+          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Nearby Requests - New Uber-like System */}
