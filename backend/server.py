@@ -152,6 +152,62 @@ class DriverProfile(BaseModel):
 
 
 # Helper functions
+def calculate_distance(lat1, lng1, lat2, lng2):
+    """Calculate distance between two coordinates using Haversine formula (in km)"""
+    R = 6371  # Earth's radius in kilometers
+    
+    lat1_rad = math.radians(lat1)
+    lng1_rad = math.radians(lng1)
+    lat2_rad = math.radians(lat2)
+    lng2_rad = math.radians(lng2)
+    
+    dlat = lat2_rad - lat1_rad
+    dlng = lng2_rad - lng1_rad
+    
+    a = math.sin(dlat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlng/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    
+    return R * c  # Distance in kilometers
+
+
+async def find_nearby_available_drivers(pickup_lat, pickup_lng, max_distance_km=50):
+    """Find available drivers within specified distance"""
+    available_drivers = []
+    
+    # Get all drivers who are available and approved
+    drivers = await db.users.find({
+        "role": "driver",
+        "is_approved": True,
+        "is_active": True
+    }).to_list(1000)
+    
+    for driver in drivers:
+        # Get driver profile to check status and location
+        profile = await db.driver_profiles.find_one({"user_id": driver["id"]})
+        
+        if (profile and 
+            profile.get("status") == "available" and 
+            profile.get("current_location_lat") and 
+            profile.get("current_location_lng")):
+            
+            distance = calculate_distance(
+                pickup_lat, pickup_lng,
+                profile["current_location_lat"], 
+                profile["current_location_lng"]
+            )
+            
+            if distance <= max_distance_km:
+                available_drivers.append({
+                    "driver": driver,
+                    "profile": profile,
+                    "distance_km": round(distance, 2)
+                })
+    
+    # Sort by distance (closest first)
+    available_drivers.sort(key=lambda x: x["distance_km"])
+    return available_drivers
+
+
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
