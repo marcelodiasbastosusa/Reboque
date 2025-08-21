@@ -60,11 +60,14 @@ class TowFleetAPITester:
         """Test user registration for different roles"""
         print("\n🔍 Testing User Registration...")
         
+        # Use timestamp to ensure unique emails
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
         test_users = [
-            {"email": "client@test.com", "password": "TestPass123!", "full_name": "Test Client", "role": "client", "phone": "1234567890"},
-            {"email": "driver@test.com", "password": "TestPass123!", "full_name": "Test Driver", "role": "driver", "phone": "1234567891"},
-            {"email": "dealer@test.com", "password": "TestPass123!", "full_name": "Test Dealer", "role": "dealer", "phone": "1234567892"},
-            {"email": "admin@test.com", "password": "TestPass123!", "full_name": "Test Admin", "role": "admin", "phone": "1234567893"},
+            {"email": f"client_{timestamp}@test.com", "password": "TestPass123!", "full_name": "Test Client", "role": "client", "phone": "1234567890"},
+            {"email": f"driver_{timestamp}@test.com", "password": "TestPass123!", "full_name": "Test Driver", "role": "driver", "phone": "1234567891"},
+            {"email": f"dealer_{timestamp}@test.com", "password": "TestPass123!", "full_name": "Test Dealer", "role": "dealer", "phone": "1234567892"},
+            {"email": f"admin_{timestamp}@test.com", "password": "TestPass123!", "full_name": "Test Admin", "role": "admin", "phone": "1234567893"},
         ]
 
         for user_data in test_users:
