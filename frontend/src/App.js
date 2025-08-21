@@ -11,6 +11,7 @@ import CreateTowRequest from "./components/CreateTowRequest";
 import TowRequestList from "./components/TowRequestList";
 import TowRequestDetail from "./components/TowRequestDetail";
 import DriverDashboard from "./components/DriverDashboard";
+import AdminPanel from "./components/AdminPanel";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
