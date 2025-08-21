@@ -201,7 +201,7 @@ async def register(user_data: UserCreate):
     # Hash password
     hashed_password = get_password_hash(user_data.password)
     
-    # Create user
+    # Create user dict with hashed password
     user_dict = user_data.dict(exclude={"password"})
     user_dict["hashed_password"] = hashed_password
     
@@ -209,22 +209,25 @@ async def register(user_data: UserCreate):
     if user_data.role in [UserRole.TOW_COMPANY, UserRole.DRIVER]:
         user_dict["is_approved"] = False
     
-    user = User(**user_dict)
-    # Store user data with hashed password in database
-    user_db_dict = user.dict()
-    user_db_dict["hashed_password"] = hashed_password
-    await db.users.insert_one(user_db_dict)
+    # Add UUID and timestamps
+    user_dict["id"] = str(uuid.uuid4())
+    user_dict["created_at"] = datetime.now(timezone.utc)
+    user_dict["updated_at"] = datetime.now(timezone.utc)
+    
+    # Store in database with hashed password
+    await db.users.insert_one(user_dict)
     
     # Create driver profile if role is driver
     if user_data.role == UserRole.DRIVER:
         driver_profile = DriverProfile(
-            user_id=user.id,
+            user_id=user_dict["id"],
             license_number="",  # Will be updated later
             vehicle_info="",    # Will be updated later
         )
         await db.driver_profiles.insert_one(driver_profile.dict())
     
-    return user
+    # Return user without hashed password
+    return User(**{k: v for k, v in user_dict.items() if k != "hashed_password"})
 
 
 @api_router.post("/auth/login", response_model=Token)
