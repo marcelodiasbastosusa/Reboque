@@ -416,7 +416,7 @@ const translations = {
     'locationError': 'No se pudo obtener tu ubicación',
     'geolocationNotSupported': 'Geolocalización no soportada',
     'errorFetchingRequests': 'Error al obtener solicitudes',
-    'unknownError': 'Error desconocido',
+    'noAssignedJobs': 'No tienes trabajos asignados',
     'no': 'No',
     'close': 'Cerrar',
     'confirm': 'Confirmar',
