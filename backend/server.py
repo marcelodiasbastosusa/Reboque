@@ -226,6 +226,120 @@ def calculate_distance(lat1, lng1, lat2, lng2):
     return R * c  # Distance in kilometers
 
 
+def calculate_distance(lat1, lng1, lat2, lng2):
+    """Calculate distance between two coordinates using Haversine formula (in km)"""
+    R = 6371  # Earth's radius in kilometers
+    
+    lat1_rad = math.radians(lat1)
+    lng1_rad = math.radians(lng1)
+    lat2_rad = math.radians(lat2)
+    lng2_rad = math.radians(lng2)
+    
+    dlat = lat2_rad - lat1_rad
+    dlng = lng2_rad - lng1_rad
+    
+    a = math.sin(dlat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlng/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    
+    distance_km = R * c
+    distance_miles = distance_km * 0.621371  # Convert to miles
+    return distance_miles
+
+
+async def calculate_tow_price(pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, driver_user_id=None):
+    """Calculate tow price based on distance and driver/admin pricing"""
+    
+    # Calculate distance in miles
+    distance_miles = calculate_distance(pickup_lat, pickup_lng, dropoff_lat, dropoff_lng)
+    
+    # Get pricing configuration
+    if driver_user_id:
+        # Try to get driver's custom pricing first
+        driver_pricing = await db.driver_pricing.find_one({"driver_user_id": driver_user_id})
+        
+        if driver_pricing and not driver_pricing.get("is_using_base_pricing", True):
+            price_per_mile = driver_pricing["price_per_mile"]
+            pickup_fee = driver_pricing["pickup_fee"]
+        else:
+            # Use base admin pricing
+            pricing_config = await db.pricing_config.find_one({}, sort=[("created_at", -1)])
+            if pricing_config:
+                price_per_mile = pricing_config["price_per_mile"]
+                pickup_fee = pricing_config["pickup_fee"]
+            else:
+                # Default pricing if no config exists
+                price_per_mile = 2.50
+                pickup_fee = 25.00
+    else:
+        # Use base admin pricing for general calculations
+        pricing_config = await db.pricing_config.find_one({}, sort=[("created_at", -1)])
+        if pricing_config:
+            price_per_mile = pricing_config["price_per_mile"]
+            pickup_fee = pricing_config["pickup_fee"]
+        else:
+            price_per_mile = 2.50
+            pickup_fee = 25.00
+    
+    # Calculate total price: pickup fee + (distance * price per mile)
+    total_price = pickup_fee + (distance_miles * price_per_mile)
+    
+    return {
+        "distance_miles": round(distance_miles, 2),
+        "price_per_mile": price_per_mile,
+        "pickup_fee": pickup_fee,
+        "total_price": round(total_price, 2)
+    }
+
+
+async def find_nearest_available_driver(pickup_lat, pickup_lng):
+    """Find the nearest available driver"""
+    available_drivers = await find_nearby_available_drivers(pickup_lat, pickup_lng, max_distance_km=80)
+    
+    if available_drivers:
+        return available_drivers[0]  # Return closest driver
+    return None
+
+
+async def move_to_next_driver(tow_request_id):
+    """Move tow request to the next available driver"""
+    request = await db.tow_requests.find_one({"id": tow_request_id})
+    if not request:
+        return None
+    
+    # Find next available driver
+    next_driver = await find_nearest_available_driver(
+        request["pickup_lat"], 
+        request["pickup_lng"]
+    )
+    
+    if next_driver:
+        # Calculate price for this driver
+        price_calc = await calculate_tow_price(
+            request["pickup_lat"], 
+            request["pickup_lng"],
+            request["dropoff_lat"], 
+            request["dropoff_lng"],
+            next_driver["driver"]["id"]
+        )
+        
+        # Update request with new driver and calculated price
+        await db.tow_requests.update_one(
+            {"id": tow_request_id},
+            {"$set": {
+                "current_driver_id": next_driver["driver"]["id"],
+                "calculated_price": price_calc["total_price"],
+                "distance_miles": price_calc["distance_miles"],
+                "negotiation_status": "awaiting_driver",
+                "offer_expires_at": datetime.now(timezone.utc) + timedelta(minutes=5),
+                "updated_at": datetime.now(timezone.utc)
+            }}
+        )
+        
+        return next_driver
+    
+    return None
+
+
 async def find_nearby_available_drivers(pickup_lat, pickup_lng, max_distance_km=50):
     """Find available drivers within specified distance"""
     available_drivers = []
