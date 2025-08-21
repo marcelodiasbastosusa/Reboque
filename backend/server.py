@@ -546,6 +546,294 @@ async def create_tow_request(
     return tow_request
 
 
+@api_router.post("/tow-requests/{request_id}/offer")
+async def make_price_offer(
+    request_id: str,
+    offer_data: PriceOfferCreate,
+    current_user: User = Depends(get_current_user)
+):
+    """Client makes a price offer or driver makes a counter-offer"""
+    
+    request = await db.tow_requests.find_one({"id": request_id})
+    if not request:
+        raise HTTPException(status_code=404, detail="Tow request not found")
+    
+    # Determine offer type based on user role
+    if current_user.role in [UserRole.CLIENT, UserRole.DEALER]:
+        if request["client_id"] != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+        offer_type = "client_offer"
+    elif current_user.role == UserRole.DRIVER:
+        if request["current_driver_id"] != current_user.id:
+            raise HTTPException(status_code=403, detail="Request not assigned to you")
+        offer_type = "driver_counter"
+    else:
+        raise HTTPException(status_code=403, detail="Invalid user role for making offers")
+    
+    # Create offer
+    offer = PriceOffer(
+        tow_request_id=request_id,
+        offered_by_user_id=current_user.id,
+        offer_type=offer_type,
+        amount=offer_data.amount,
+        message=offer_data.message,
+        expires_at=datetime.now(timezone.utc) + timedelta(minutes=10)
+    )
+    
+    await db.price_offers.insert_one(offer.dict())
+    
+    # Update request status
+    update_data = {
+        "negotiation_status": "negotiating",
+        "updated_at": datetime.now(timezone.utc)
+    }
+    
+    if offer_type == "client_offer":
+        update_data["proposed_price"] = offer_data.amount
+    
+    await db.tow_requests.update_one({"id": request_id}, {"$set": update_data})
+    
+    return offer
+
+
+@api_router.post("/tow-requests/{request_id}/accept-offer")
+async def accept_price_offer(
+    request_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Accept the current price offer and proceed with the tow"""
+    
+    request = await db.tow_requests.find_one({"id": request_id})
+    if not request:
+        raise HTTPException(status_code=404, detail="Tow request not found")
+    
+    # Get latest offer
+    latest_offer = await db.price_offers.find_one(
+        {"tow_request_id": request_id}, 
+        sort=[("created_at", -1)]
+    )
+    
+    if not latest_offer:
+        raise HTTPException(status_code=400, detail="No offer to accept")
+    
+    # Determine who can accept
+    if current_user.role == UserRole.DRIVER and request["current_driver_id"] == current_user.id:
+        # Driver accepting client's offer
+        if latest_offer["offer_type"] != "client_offer":
+            raise HTTPException(status_code=400, detail="No client offer to accept")
+    elif (current_user.role in [UserRole.CLIENT, UserRole.DEALER] and 
+          request["client_id"] == current_user.id):
+        # Client accepting driver's counter-offer
+        if latest_offer["offer_type"] != "driver_counter":
+            raise HTTPException(status_code=400, detail="No driver counter-offer to accept")
+    else:
+        raise HTTPException(status_code=403, detail="Not authorized to accept this offer")
+    
+    # Accept the offer and assign the job
+    await db.price_offers.update_one(
+        {"id": latest_offer["id"]}, 
+        {"$set": {"status": "accepted"}}
+    )
+    
+    await db.tow_requests.update_one(
+        {"id": request_id},
+        {"$set": {
+            "status": TowRequestStatus.ACCEPTED,
+            "assigned_driver_id": request["current_driver_id"],
+            "final_agreed_price": latest_offer["amount"],
+            "negotiation_status": "price_agreed",
+            "updated_at": datetime.now(timezone.utc)
+        }}
+    )
+    
+    # Update driver status
+    await db.driver_profiles.update_one(
+        {"user_id": request["current_driver_id"]},
+        {"$set": {"status": DriverStatus.ON_MISSION}}
+    )
+    
+    return {"message": "Offer accepted, tow request assigned", "agreed_price": latest_offer["amount"]}
+
+
+@api_router.post("/tow-requests/{request_id}/reject-offer")
+async def reject_price_offer(
+    request_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Reject the current offer and move to next driver or end negotiation"""
+    
+    request = await db.tow_requests.find_one({"id": request_id})
+    if not request:
+        raise HTTPException(status_code=404, detail="Tow request not found")
+    
+    # Get latest offer
+    latest_offer = await db.price_offers.find_one(
+        {"tow_request_id": request_id}, 
+        sort=[("created_at", -1)]
+    )
+    
+    if latest_offer:
+        await db.price_offers.update_one(
+            {"id": latest_offer["id"]}, 
+            {"$set": {"status": "rejected"}}
+        )
+    
+    # If driver rejects, move to next available driver
+    if (current_user.role == UserRole.DRIVER and 
+        request["current_driver_id"] == current_user.id):
+        
+        next_driver = await move_to_next_driver(request_id)
+        
+        if next_driver:
+            return {
+                "message": "Offer rejected, moved to next driver", 
+                "next_driver_distance": f"{next_driver['distance_km']} km"
+            }
+        else:
+            # No more drivers available
+            await db.tow_requests.update_one(
+                {"id": request_id},
+                {"$set": {
+                    "negotiation_status": "no_drivers_available",
+                    "current_driver_id": None,
+                    "updated_at": datetime.now(timezone.utc)
+                }}
+            )
+            return {"message": "No more drivers available"}
+    
+    # If client rejects driver's counter-offer, driver can make another offer
+    elif (current_user.role in [UserRole.CLIENT, UserRole.DEALER] and 
+          request["client_id"] == current_user.id):
+        
+        await db.tow_requests.update_one(
+            {"id": request_id},
+            {"$set": {
+                "negotiation_status": "awaiting_driver",
+                "updated_at": datetime.now(timezone.utc)
+            }}
+        )
+        return {"message": "Counter-offer rejected, awaiting new driver offer"}
+    
+    else:
+        raise HTTPException(status_code=403, detail="Not authorized to reject this offer")
+
+
+# Driver Pricing Management
+@api_router.get("/drivers/pricing", response_model=DriverPricing)
+async def get_driver_pricing(current_user: User = Depends(get_current_user)):
+    """Get driver's current pricing configuration"""
+    if current_user.role != UserRole.DRIVER:
+        raise HTTPException(status_code=403, detail="Only drivers can access pricing")
+    
+    pricing = await db.driver_pricing.find_one({"driver_user_id": current_user.id})
+    
+    if not pricing:
+        # Create default pricing for new driver
+        default_pricing = DriverPricing(driver_user_id=current_user.id)
+        await db.driver_pricing.insert_one(default_pricing.dict())
+        return default_pricing
+    
+    return DriverPricing(**pricing)
+
+
+@api_router.put("/drivers/pricing", response_model=DriverPricing)
+async def update_driver_pricing(
+    pricing_data: DriverPricingUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    """Update driver's pricing configuration"""
+    if current_user.role != UserRole.DRIVER:
+        raise HTTPException(status_code=403, detail="Only drivers can update pricing")
+    
+    update_dict = {k: v for k, v in pricing_data.dict().items() if v is not None}
+    update_dict["updated_at"] = datetime.now(timezone.utc)
+    
+    # Ensure pricing exists
+    existing = await db.driver_pricing.find_one({"driver_user_id": current_user.id})
+    if not existing:
+        # Create new pricing
+        new_pricing = DriverPricing(driver_user_id=current_user.id, **update_dict)
+        await db.driver_pricing.insert_one(new_pricing.dict())
+        return new_pricing
+    else:
+        # Update existing
+        await db.driver_pricing.update_one(
+            {"driver_user_id": current_user.id},
+            {"$set": update_dict}
+        )
+        updated_pricing = await db.driver_pricing.find_one({"driver_user_id": current_user.id})
+        return DriverPricing(**updated_pricing)
+
+
+# Admin Pricing Management  
+@api_router.get("/admin/pricing-config", response_model=PricingConfig)
+async def get_pricing_config(current_user: User = Depends(get_current_user)):
+    """Get current admin pricing configuration"""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    config = await db.pricing_config.find_one({}, sort=[("created_at", -1)])
+    
+    if not config:
+        # Create default config
+        default_config = PricingConfig(updated_by_admin_id=current_user.id)
+        await db.pricing_config.insert_one(default_config.dict())
+        return default_config
+    
+    return PricingConfig(**config)
+
+
+@api_router.put("/admin/pricing-config", response_model=PricingConfig)
+async def update_pricing_config(
+    config_data: PricingConfigUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    """Update admin pricing configuration"""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    update_dict = {k: v for k, v in config_data.dict().items() if v is not None}
+    update_dict["updated_by_admin_id"] = current_user.id
+    update_dict["updated_at"] = datetime.now(timezone.utc)
+    
+    # Create new config (keep history)
+    existing = await db.pricing_config.find_one({}, sort=[("created_at", -1)])
+    
+    if existing:
+        new_config = PricingConfig(**existing, **update_dict)
+    else:
+        new_config = PricingConfig(**update_dict)
+    
+    await db.pricing_config.insert_one(new_config.dict())
+    return new_config
+
+
+@api_router.get("/tow-requests/{request_id}/offers")
+async def get_request_offers(
+    request_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get all offers for a tow request"""
+    
+    request = await db.tow_requests.find_one({"id": request_id})
+    if not request:
+        raise HTTPException(status_code=404, detail="Tow request not found")
+    
+    # Check authorization
+    if (current_user.role in [UserRole.CLIENT, UserRole.DEALER] and 
+        request["client_id"] != current_user.id) or \
+       (current_user.role == UserRole.DRIVER and 
+        request["current_driver_id"] != current_user.id) or \
+       (current_user.role not in [UserRole.CLIENT, UserRole.DEALER, UserRole.DRIVER, UserRole.ADMIN]):
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    offers = await db.price_offers.find(
+        {"tow_request_id": request_id}
+    ).sort("created_at", -1).to_list(100)
+    
+    return [PriceOffer(**offer) for offer in offers]
+
+
 @api_router.get("/tow-requests/nearby", response_model=List[Dict])
 async def get_nearby_tow_requests(
     current_user: User = Depends(get_current_user),
