@@ -307,11 +307,14 @@ const CreateTowRequest = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="navbar px-6 py-4">
-        <div className="flex items-center gap-4">
-          <Link to="/dashboard" className="text-gray-600 hover:text-gray-800">
-            <ArrowLeft className="h-6 w-6" />
-          </Link>
-          <h1 className="text-xl font-semibold text-gray-900">Nova Solicitação de Reboque</h1>
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-4">
+            <Link to="/dashboard" className="text-gray-600 hover:text-gray-800">
+              <ArrowLeft className="h-6 w-6" />
+            </Link>
+            <h1 className="text-xl font-semibold text-gray-900">{t('newTowRequest')}</h1>
+          </div>
+          <LanguageSelector />
         </div>
       </header>
 
