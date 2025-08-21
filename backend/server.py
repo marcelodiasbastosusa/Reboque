@@ -474,6 +474,29 @@ async def accept_tow_request(request_id: str, current_user: User = Depends(get_c
     if request["status"] != TowRequestStatus.PENDING:
         raise HTTPException(status_code=400, detail="Request is not pending")
     
+    # For drivers, check if they are available and close enough
+    if current_user.role == UserRole.DRIVER:
+        driver_profile = await db.driver_profiles.find_one({"user_id": current_user.id})
+        
+        if not driver_profile:
+            raise HTTPException(status_code=400, detail="Driver profile not found")
+        
+        if driver_profile.get("status") != "available":
+            raise HTTPException(status_code=400, detail="Driver must be available to accept requests")
+        
+        # Check distance (optional validation)
+        if (driver_profile.get("current_location_lat") and 
+            driver_profile.get("current_location_lng")):
+            distance = calculate_distance(
+                driver_profile["current_location_lat"],
+                driver_profile["current_location_lng"],
+                request["pickup_lat"],
+                request["pickup_lng"]
+            )
+            
+            if distance > 100:  # Max 100km
+                raise HTTPException(status_code=400, detail="Request too far from your location")
+    
     update_data = {
         "status": TowRequestStatus.ACCEPTED,
         "updated_at": datetime.now(timezone.utc)
@@ -481,6 +504,13 @@ async def accept_tow_request(request_id: str, current_user: User = Depends(get_c
     
     if current_user.role == UserRole.DRIVER:
         update_data["assigned_driver_id"] = current_user.id
+        
+        # Update driver status to on_mission
+        await db.driver_profiles.update_one(
+            {"user_id": current_user.id},
+            {"$set": {"status": DriverStatus.ON_MISSION}}
+        )
+        
     elif current_user.role == UserRole.TOW_COMPANY:
         update_data["accepted_by_company_id"] = current_user.id
     
