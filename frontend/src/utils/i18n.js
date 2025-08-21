@@ -362,7 +362,9 @@ const translations = {
     'waitingForClient': 'Aguardando resposta do cliente',
     'offerAmount': 'Valor da Oferta',
     'offerMessage': 'Mensagem (Opcional)',
-    'sendOffer': 'Enviar Oferta',
+    'offerAccepted': 'Oferta aceita com sucesso!',
+    'negotiationStatus': 'Status da Negociação',
+    'explainYourOffer': 'Explique sua oferta ou adicione comentários...',
     
     'noAssignedJobs': 'Você não tem trabalhos atribuídos',
     'no': 'Não',
