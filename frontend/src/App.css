@@ -363,6 +363,16 @@ body {
 .font-semibold { font-weight: 600; }
 .font-medium { font-weight: 500; }
 
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 14px;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: none;
+}
+
 /* Color utilities */
 .text-gray-600 { color: #4b5563; }
 .text-gray-700 { color: #374151; }
