@@ -142,35 +142,39 @@ const DriverDashboard = () => {
             <Link to="/dashboard" className="text-gray-600 hover:text-gray-800">
               <ArrowLeft className="h-6 w-6" />
             </Link>
-            <h1 className="text-xl font-semibold text-gray-900">Painel do Motorista</h1>
+            <h1 className="text-xl font-semibold text-gray-900">{t('driverDashboard')}</h1>
           </div>
           
-          {/* Status Control */}
-          {driverProfile && (
-            <div className="flex items-center gap-4">
-              <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${getStatusColor(driverProfile.status)}`}>
-                {getStatusIcon(driverProfile.status)}
-                <span className="font-medium">{getStatusText(driverProfile.status)}</span>
-              </div>
-              
-              <div className="flex gap-2">
-                <button
-                  onClick={() => updateDriverStatus('offline')}
-                  disabled={updatingStatus}
-                  className={`btn-sm ${driverProfile.status === 'offline' ? 'bg-gray-500 text-white cursor-not-allowed' : 'btn-secondary'}`}
-                >
-                  Offline
-                </button>
-                <button
-                  onClick={() => updateDriverStatus('available')}
-                  disabled={updatingStatus || driverProfile.status === 'on_mission'}
-                  className={`btn-sm ${driverProfile.status === 'available' ? 'bg-green-500 text-white cursor-not-allowed' : 'btn-secondary'} ${driverProfile.status === 'on_mission' ? 'cursor-not-allowed opacity-50' : ''}`}
-                >
-                  Disponível
-                </button>
-              </div>
-            </div>
-          )}
+          <div className="flex items-center gap-4">
+            <LanguageSelector />
+            
+            {/* Status Control */}
+            {driverProfile && (
+              <>
+                <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${getStatusColor(driverProfile.status)}`}>
+                  {getStatusIcon(driverProfile.status)}
+                  <span className="font-medium">{getStatusText(driverProfile.status)}</span>
+                </div>
+                
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => updateDriverStatus('offline')}
+                    disabled={updatingStatus}
+                    className={`btn-sm ${driverProfile.status === 'offline' ? 'bg-gray-500 text-white cursor-not-allowed' : 'btn-secondary'}`}
+                  >
+                    {t('offline')}
+                  </button>
+                  <button
+                    onClick={() => updateDriverStatus('available')}
+                    disabled={updatingStatus || driverProfile.status === 'on_mission'}
+                    className={`btn-sm ${driverProfile.status === 'available' ? 'bg-green-500 text-white cursor-not-allowed' : 'btn-secondary'} ${driverProfile.status === 'on_mission' ? 'cursor-not-allowed opacity-50' : ''}`}
+                  >
+                    {t('available')}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
