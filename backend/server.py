@@ -839,39 +839,55 @@ async def get_nearby_tow_requests(
     current_user: User = Depends(get_current_user),
     max_distance: Optional[float] = 50.0
 ):
-    """Get tow requests near the driver's current location"""
+    """Get tow requests assigned to current driver or awaiting response"""
     if current_user.role != UserRole.DRIVER:
         raise HTTPException(status_code=403, detail="Only drivers can access nearby requests")
     
     # Get driver's current location
     driver_profile = await db.driver_profiles.find_one({"user_id": current_user.id})
     if not driver_profile or not driver_profile.get("current_location_lat"):
-        raise HTTPException(status_code=400, detail="Driver location not set")
+        return []  # No location set
     
     # Check if driver is available
     if driver_profile.get("status") != "available":
-        return []  # Don't show requests if driver is not available
+        # If driver is on mission, show only their assigned requests
+        assigned_requests = await db.tow_requests.find({
+            "assigned_driver_id": current_user.id,
+            "status": {"$in": ["accepted", "on_mission"]}
+        }).to_list(100)
+        
+        return [TowRequest(**request).dict() for request in assigned_requests]
     
-    # Get pending requests
-    pending_requests = await db.tow_requests.find({"status": TowRequestStatus.PENDING}).to_list(1000)
+    # For available drivers, show requests currently assigned to them
+    current_requests = await db.tow_requests.find({
+        "current_driver_id": current_user.id,
+        "status": "pending",
+        "negotiation_status": {"$in": ["awaiting_driver", "negotiating"]}
+    }).to_list(100)
     
-    nearby_requests = []
-    for request in pending_requests:
+    # Add distance and offer information
+    enhanced_requests = []
+    for request in current_requests:
         distance = calculate_distance(
             driver_profile["current_location_lat"],
-            driver_profile["current_location_lng"],
+            driver_profile["current_location_lng"], 
             request["pickup_lat"],
             request["pickup_lng"]
+        ) * 0.621371  # Convert km to miles
+        
+        # Get latest offer if any
+        latest_offer = await db.price_offers.find_one(
+            {"tow_request_id": request["id"]},
+            sort=[("created_at", -1)]
         )
         
-        if distance <= max_distance:
-            request_with_distance = TowRequest(**request).dict()
-            request_with_distance["distance_km"] = round(distance, 2)
-            nearby_requests.append(request_with_distance)
+        request_with_details = TowRequest(**request).dict()
+        request_with_details["distance_miles"] = round(distance, 2)
+        request_with_details["latest_offer"] = PriceOffer(**latest_offer).dict() if latest_offer else None
+        
+        enhanced_requests.append(request_with_details)
     
-    # Sort by distance (closest first)
-    nearby_requests.sort(key=lambda x: x["distance_km"])
-    return nearby_requests
+    return enhanced_requests
 
 
 @api_router.get("/tow-requests", response_model=List[TowRequest])
