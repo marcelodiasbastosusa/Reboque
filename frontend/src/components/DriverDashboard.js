@@ -27,6 +27,7 @@ const DriverDashboard = () => {
   const [myRequests, setMyRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [activeTab, setActiveTab] = useState('requests'); // 'requests', 'pricing'
 
   useEffect(() => {
     fetchDriverData();
