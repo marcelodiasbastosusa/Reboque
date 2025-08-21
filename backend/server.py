@@ -255,7 +255,7 @@ async def login(user_data: UserLogin):
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    if not user["is_approved"]:
+    if not user.get("is_approved", True):  # Default to True for backward compatibility
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account pending approval"
