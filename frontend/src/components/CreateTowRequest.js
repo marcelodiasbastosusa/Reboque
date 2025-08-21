@@ -195,12 +195,12 @@ const CreateTowRequest = () => {
   };
 
   const calculateRoute = (pickup, dropoff) => {
-    if (directionsService && directionsRenderer) {
+    if (directionsService && directionsRenderer && window.google) {
       directionsService.route(
         {
           origin: pickup,
           destination: dropoff,
-          travelMode: google.maps.TravelMode.DRIVING,
+          travelMode: window.google.maps.TravelMode.DRIVING,
         },
         (result, status) => {
           if (status === 'OK') {
