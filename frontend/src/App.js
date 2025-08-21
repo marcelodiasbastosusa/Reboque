@@ -45,10 +45,12 @@ function App() {
         .then(response => {
           setUser(response.data);
         })
-        .catch(() => {
+        .catch((error) => {
+          console.error('Token validation failed:', error);
           // Token is invalid, remove it
           localStorage.removeItem('token');
           delete api.defaults.headers.common['Authorization'];
+          setUser(null);
         })
         .finally(() => {
           setLoading(false);
