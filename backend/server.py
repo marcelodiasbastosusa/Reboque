@@ -204,6 +204,24 @@ class DriverProfile(BaseModel):
     current_location_lng: Optional[float] = None
     rating: float = 5.0
     total_jobs: int = 0
+    # New company control fields
+    can_receive_calls: bool = True  # Company can disable direct calls
+    force_assigned_only: bool = False  # If true, only company assignments
+    is_active_by_company: bool = True  # Company can activate/deactivate
+    last_online: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class TowCompanyProfile(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str  # Links to user with role tow_company
+    company_name: str
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    license_number: Optional[str] = None
+    # Company preferences
+    default_force_assigned_only: bool = False  # Default for new drivers
+    auto_assign_policy: str = "manual"  # "manual", "nearest", "rotation"
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
