@@ -136,8 +136,13 @@ class TowRequest(BaseModel):
     dropoff_address: str
     dropoff_lat: float
     dropoff_lng: float
+    distance_miles: Optional[float] = None  # Calculated distance in miles
+    estimated_duration_hours: Optional[float] = None  # Estimated duration
     vehicle_info: Optional[str] = None
     proposed_price: Optional[float] = None
+    calculated_price: Optional[float] = None  # System calculated price
+    final_agreed_price: Optional[float] = None  # Final negotiated price
+    current_driver_id: Optional[str] = None  # Current driver considering the request
     vehicle_photos: List[str] = Field(default_factory=list)
     status: TowRequestStatus = TowRequestStatus.PENDING
     assigned_driver_id: Optional[str] = None
@@ -145,6 +150,8 @@ class TowRequest(BaseModel):
     driver_location_lat: Optional[float] = None
     driver_location_lng: Optional[float] = None
     notes: Optional[str] = None
+    negotiation_status: str = "awaiting_driver"  # awaiting_driver, negotiating, price_agreed, expired
+    offer_expires_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
