@@ -18,6 +18,7 @@ import {
 
 const DriverDashboard = () => {
   const { api, user } = useAuth();
+  const { t, formatPrice } = useTranslation();
   const [driverProfile, setDriverProfile] = useState(null);
   const [availableRequests, setAvailableRequests] = useState([]);
   const [myRequests, setMyRequests] = useState([]);
