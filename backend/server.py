@@ -439,6 +439,215 @@ async def update_driver_status(
     return {"message": "Status updated successfully"}
 
 
+# Admin Panel HTML Route
+@app.get("/admin-panel", response_class=HTMLResponse)
+async def admin_panel():
+    """Serve the admin panel HTML"""
+    html_content = """
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TowFleets - Painel do Gabriel</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; }
+        .login-section, .admin-section { padding: 30px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #374151; }
+        .form-group input { width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; }
+        .btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; }
+        .btn:hover { transform: translateY(-2px); }
+        .btn-approve { background: #10b981; margin-right: 10px; }
+        .btn-reject { background: #ef4444; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: #f8fafc; padding: 20px; border-radius: 8px; text-align: center; border: 2px solid #e5e7eb; }
+        .stat-number { font-size: 2rem; font-weight: bold; color: #667eea; margin-bottom: 5px; }
+        .user-card { background: #f8fafc; border: 2px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 15px; }
+        .user-name { font-size: 1.2rem; font-weight: bold; color: #1f2937; margin-bottom: 5px; }
+        .user-role { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-bottom: 10px; }
+        .role-driver { background: #dbeafe; color: #1e40af; }
+        .role-tow_company { background: #e0e7ff; color: #7c3aed; }
+        .hidden { display: none; }
+        .alert { padding: 15px; margin-bottom: 20px; border-radius: 8px; font-weight: 500; }
+        .alert-success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+        .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+        .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚛 TowFleets</h1>
+            <p>Painel Administrativo - Gabriel Dias</p>
+        </div>
+        
+        <div id="loginSection" class="login-section">
+            <h2 style="margin-bottom: 20px;">Login do Administrador</h2>
+            <div id="loginAlert"></div>
+            <div class="form-group">
+                <label>Email:</label>
+                <input type="email" id="email" value="gabriel@gmail.com">
+            </div>
+            <div class="form-group">
+                <label>Senha:</label>
+                <input type="password" id="password">
+            </div>
+            <button id="loginBtn" class="btn" onclick="login()">Entrar</button>
+        </div>
+        
+        <div id="adminSection" class="admin-section hidden">
+            <div id="adminAlert"></div>
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-number" id="totalPending">0</div><div>Aprovações Pendentes</div></div>
+                <div class="stat-card"><div class="stat-number" id="pendingDrivers">0</div><div>Motoristas Pendentes</div></div>
+                <div class="stat-card"><div class="stat-number" id="pendingCompanies">0</div><div>Empresas Pendentes</div></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                <h2>Usuários Pendentes</h2>
+                <button class="btn" onclick="loadPendingUsers()">🔄 Atualizar</button>
+            </div>
+            <div id="pendingUsers"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api';
+        let authToken = null;
+        
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const loginBtn = document.getElementById('loginBtn');
+            const loginAlert = document.getElementById('loginAlert');
+            
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<span class="spinner"></span>Entrando...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    authToken = data.access_token;
+                    
+                    if (data.user.role === 'admin') {
+                        document.getElementById('loginSection').classList.add('hidden');
+                        document.getElementById('adminSection').classList.remove('hidden');
+                        loadPendingUsers();
+                    } else {
+                        loginAlert.innerHTML = '<div class="alert alert-error">Apenas administradores podem acessar.</div>';
+                    }
+                } else {
+                    const error = await response.json();
+                    loginAlert.innerHTML = `<div class="alert alert-error">Erro: ${error.detail}</div>`;
+                }
+            } catch (error) {
+                loginAlert.innerHTML = '<div class="alert alert-error">Erro de conexão.</div>';
+            }
+            
+            loginBtn.disabled = false;
+            loginBtn.innerHTML = 'Entrar';
+        }
+        
+        async function loadPendingUsers() {
+            const pendingUsersDiv = document.getElementById('pendingUsers');
+            pendingUsersDiv.innerHTML = '<div style="text-align: center; padding: 20px;"><span class="spinner"></span>Carregando...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/admin/pending-approvals`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (response.ok) {
+                    const users = await response.json();
+                    displayPendingUsers(users);
+                    updateStats(users);
+                } else {
+                    pendingUsersDiv.innerHTML = '<div class="alert alert-error">Erro ao carregar usuários.</div>';
+                }
+            } catch (error) {
+                pendingUsersDiv.innerHTML = '<div class="alert alert-error">Erro de conexão.</div>';
+            }
+        }
+        
+        function updateStats(users) {
+            document.getElementById('totalPending').textContent = users.length;
+            document.getElementById('pendingDrivers').textContent = users.filter(u => u.role === 'driver').length;
+            document.getElementById('pendingCompanies').textContent = users.filter(u => u.role === 'tow_company').length;
+        }
+        
+        function displayPendingUsers(users) {
+            const pendingUsersDiv = document.getElementById('pendingUsers');
+            
+            if (users.length === 0) {
+                pendingUsersDiv.innerHTML = '<div style="text-align: center; padding: 40px;"><h3>🎉 Nenhum usuário pendente!</h3><p>Todos já foram aprovados.</p></div>';
+                return;
+            }
+            
+            const roleNames = { 'driver': 'Motorista', 'tow_company': 'Empresa de Reboque' };
+            
+            const usersHTML = users.map(user => {
+                const createdDate = new Date(user.created_at).toLocaleDateString('pt-BR', {
+                    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                });
+                
+                return `
+                    <div class="user-card">
+                        <div class="user-name">${user.full_name}</div>
+                        <span class="user-role role-${user.role}">${roleNames[user.role]}</span>
+                        <div style="color: #6b7280; font-size: 14px; margin-bottom: 15px;">
+                            <strong>Email:</strong> ${user.email}<br>
+                            <strong>Telefone:</strong> ${user.phone || 'Não informado'}<br>
+                            <strong>Cadastrado:</strong> ${createdDate}
+                        </div>
+                        <button class="btn btn-approve" onclick="approveUser('${user.id}', '${user.full_name}')">✅ Aprovar</button>
+                        <button class="btn btn-reject">❌ Rejeitar</button>
+                    </div>
+                `;
+            }).join('');
+            
+            pendingUsersDiv.innerHTML = usersHTML;
+        }
+        
+        async function approveUser(userId, userName) {
+            const adminAlert = document.getElementById('adminAlert');
+            
+            try {
+                const response = await fetch(`${API_BASE}/admin/approve-user/${userId}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (response.ok) {
+                    adminAlert.innerHTML = `<div class="alert alert-success">✅ ${userName} foi aprovado!</div>`;
+                    loadPendingUsers();
+                } else {
+                    adminAlert.innerHTML = `<div class="alert alert-error">❌ Erro ao aprovar ${userName}</div>`;
+                }
+            } catch (error) {
+                adminAlert.innerHTML = `<div class="alert alert-error">❌ Erro de conexão</div>`;
+            }
+        }
+        
+        document.getElementById('password').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') login();
+        });
+    </script>
+</body>
+</html>
+    """
+    return HTMLResponse(content=html_content)
+
+
 # Admin endpoints
 @api_router.get("/admin/pending-approvals")
 async def get_pending_approvals(current_user: User = Depends(get_current_user)):
