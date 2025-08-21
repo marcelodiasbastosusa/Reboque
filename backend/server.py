@@ -233,7 +233,22 @@ async def register(user_data: UserCreate):
 @api_router.post("/auth/login", response_model=Token)
 async def login(user_data: UserLogin):
     user = await db.users.find_one({"email": user_data.email})
-    if not user or not verify_password(user_data.password, user["hashed_password"]):
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Check if hashed_password exists (for older users created before the fix)
+    if "hashed_password" not in user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Account needs to be re-created. Please register again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    if not verify_password(user_data.password, user["hashed_password"]):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -254,7 +269,7 @@ async def login(user_data: UserLogin):
     return Token(
         access_token=access_token,
         token_type="bearer",
-        user=User(**user)
+        user=User(**{k: v for k, v in user.items() if k != "hashed_password"})
     )
 
 
