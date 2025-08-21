@@ -247,7 +247,7 @@ const DriverDashboard = () => {
                   {myRequests.length === 0 ? (
                     <div className="text-center py-8">
                       <Navigation className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-500">Você não tem trabalhos atribuídos</p>
+                      <p className="text-gray-500">{t('noAssignedJobs')}</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -260,20 +260,20 @@ const DriverDashboard = () => {
                               </span>
                             </div>
                             <span className="text-xs text-gray-500">
-                              {new Date(request.created_at).toLocaleDateString('pt-BR')}
+                              {new Date(request.created_at).toLocaleDateString()}
                             </span>
                           </div>
                           
                           <div className="space-y-2 mb-3">
                             <p className="text-sm">
-                              <span className="font-medium">De:</span> {request.pickup_address}
+                              <span className="font-medium">{t('pickup')}:</span> {request.pickup_address}
                             </p>
                             <p className="text-sm">
-                              <span className="font-medium">Para:</span> {request.dropoff_address}
+                              <span className="font-medium">{t('delivery')}:</span> {request.dropoff_address}
                             </p>
                             {request.proposed_price && (
                               <p className="text-sm font-semibold text-green-600">
-                                R$ {request.proposed_price.toFixed(2)}
+                                {formatPrice(request.proposed_price)}
                               </p>
                             )}
                           </div>
@@ -284,7 +284,7 @@ const DriverDashboard = () => {
                                 onClick={() => updateRequestStatus(request.id, 'on_mission')}
                                 className="btn-primary btn-sm"
                               >
-                                Iniciar
+                                {t('start')}
                               </button>
                             )}
                             {request.status === 'on_mission' && (
@@ -292,14 +292,14 @@ const DriverDashboard = () => {
                                 onClick={() => updateRequestStatus(request.id, 'completed')}
                                 className="btn-primary btn-sm"
                               >
-                                Concluir
+                                {t('complete')}
                               </button>
                             )}
                             <Link 
                               to={`/requests/${request.id}`}
                               className="btn-secondary btn-sm flex-1"
                             >
-                              Ver Detalhes
+                              {t('viewDetails')}
                             </Link>
                           </div>
                         </div>
