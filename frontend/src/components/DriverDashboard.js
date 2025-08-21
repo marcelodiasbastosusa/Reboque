@@ -270,87 +270,123 @@ const DriverDashboard = () => {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Nearby Requests - New Uber-like System */}
-            <div className="space-y-6">
-              <NearbyRequests />
-            </div>
+          {/* Tab Content */}
+          {activeTab === 'requests' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Nearby Requests - Uber-like System */}
+              <div className="space-y-6">
+                <NearbyRequests />
+              </div>
 
-            {/* My Requests */}
-            <div className="space-y-6">
-              <div className="card">
-                <div className="card-header">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {t('myJobs')} ({myRequests.length})
-                  </h3>
-                </div>
-                <div className="card-body">
-                  {myRequests.length === 0 ? (
-                    <div className="text-center py-8">
-                      <Navigation className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-500">{t('noAssignedJobs')}</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {myRequests.map((request) => (
-                        <div key={request.id} className="border border-gray-200 rounded-lg p-4">
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <span className={`status-${request.status}`}>
-                                {getRequestStatusText(request.status)}
+              {/* My Requests */}
+              <div className="space-y-6">
+                <div className="card">
+                  <div className="card-header">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {t('myJobs')} ({myRequests.length})
+                    </h3>
+                  </div>
+                  <div className="card-body">
+                    {myRequests.length === 0 ? (
+                      <div className="text-center py-8">
+                        <Navigation className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <p className="text-gray-500">{t('noAssignedJobs')}</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {myRequests.map((request) => (
+                          <div key={request.id} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <span className={`status-${request.status}`}>
+                                  {getRequestStatusText(request.status)}
+                                </span>
+                              </div>
+                              <span className="text-xs text-gray-500">
+                                {new Date(request.created_at).toLocaleDateString()}
                               </span>
                             </div>
-                            <span className="text-xs text-gray-500">
-                              {new Date(request.created_at).toLocaleDateString()}
-                            </span>
-                          </div>
-                          
-                          <div className="space-y-2 mb-3">
-                            <p className="text-sm">
-                              <span className="font-medium">{t('pickup')}:</span> {request.pickup_address}
-                            </p>
-                            <p className="text-sm">
-                              <span className="font-medium">{t('delivery')}:</span> {request.dropoff_address}
-                            </p>
-                            {request.proposed_price && (
-                              <p className="text-sm font-semibold text-green-600">
-                                {formatPrice(request.proposed_price)}
+                            
+                            <div className="space-y-2 mb-3">
+                              <p className="text-sm">
+                                <span className="font-medium">{t('pickup')}:</span> {request.pickup_address}
                               </p>
-                            )}
-                          </div>
-                          
-                          <div className="flex gap-2">
-                            {request.status === 'accepted' && (
-                              <button
-                                onClick={() => updateRequestStatus(request.id, 'on_mission')}
-                                className="btn-primary btn-sm"
+                              <p className="text-sm">
+                                <span className="font-medium">{t('delivery')}:</span> {request.dropoff_address}
+                              </p>
+                              {request.proposed_price && (
+                                <p className="text-sm font-semibold text-green-600">
+                                  {formatPrice(request.proposed_price)}
+                                </p>
+                              )}
+                            </div>
+                            
+                            <div className="flex gap-2">
+                              {request.status === 'accepted' && (
+                                <button
+                                  onClick={() => updateRequestStatus(request.id, 'on_mission')}
+                                  className="btn-primary btn-sm"
+                                >
+                                  {t('start')}
+                                </button>
+                              )}
+                              {request.status === 'on_mission' && (
+                                <button
+                                  onClick={() => updateRequestStatus(request.id, 'completed')}
+                                  className="btn-primary btn-sm"
+                                >
+                                  {t('complete')}
+                                </button>
+                              )}
+                              <Link 
+                                to={`/requests/${request.id}`}
+                                className="btn-secondary btn-sm flex-1"
                               >
-                                {t('start')}
-                              </button>
-                            )}
-                            {request.status === 'on_mission' && (
-                              <button
-                                onClick={() => updateRequestStatus(request.id, 'completed')}
-                                className="btn-primary btn-sm"
-                              >
-                                {t('complete')}
-                              </button>
-                            )}
-                            <Link 
-                              to={`/requests/${request.id}`}
-                              className="btn-secondary btn-sm flex-1"
-                            >
-                              {t('viewDetails')}
-                            </Link>
+                                {t('viewDetails')}
+                              </Link>
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {activeTab === 'pricing' && <DriverPricing />}
+
+          {activeTab === 'settings' && (
+            <div className="card">
+              <div className="card-header">
+                <h3 className="text-lg font-semibold text-gray-900">{t('driverSettings')}</h3>
+              </div>
+              <div className="card-body">
+                <div className="space-y-4">
+                  <div>
+                    <label className="form-label">{t('vehicleInfo')}</label>
+                    <input 
+                      type="text"
+                      className="form-input"
+                      placeholder={t('enterVehicleDetails')}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">{t('licenseNumber')}</label>
+                    <input 
+                      type="text"
+                      className="form-input"
+                      placeholder={t('enterLicenseNumber')}
+                    />
+                  </div>
+                  <button className="btn-primary">
+                    {t('saveSettings')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
