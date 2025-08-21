@@ -140,6 +140,10 @@ function App() {
               path="/driver-dashboard" 
               element={user && user.role === 'driver' ? <DriverDashboard /> : <Navigate to="/dashboard" />} 
             />
+            <Route 
+              path="/admin" 
+              element={user && user.role === 'admin' ? <AdminPanel /> : <Navigate to="/dashboard" />} 
+            />
             <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
           </Routes>
         </BrowserRouter>
