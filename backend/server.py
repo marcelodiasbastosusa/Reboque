@@ -354,6 +354,46 @@ async def create_tow_request(
     return tow_request
 
 
+@api_router.get("/tow-requests/nearby", response_model=List[Dict])
+async def get_nearby_tow_requests(
+    current_user: User = Depends(get_current_user),
+    max_distance: Optional[float] = 50.0
+):
+    """Get tow requests near the driver's current location"""
+    if current_user.role != UserRole.DRIVER:
+        raise HTTPException(status_code=403, detail="Only drivers can access nearby requests")
+    
+    # Get driver's current location
+    driver_profile = await db.driver_profiles.find_one({"user_id": current_user.id})
+    if not driver_profile or not driver_profile.get("current_location_lat"):
+        raise HTTPException(status_code=400, detail="Driver location not set")
+    
+    # Check if driver is available
+    if driver_profile.get("status") != "available":
+        return []  # Don't show requests if driver is not available
+    
+    # Get pending requests
+    pending_requests = await db.tow_requests.find({"status": TowRequestStatus.PENDING}).to_list(1000)
+    
+    nearby_requests = []
+    for request in pending_requests:
+        distance = calculate_distance(
+            driver_profile["current_location_lat"],
+            driver_profile["current_location_lng"],
+            request["pickup_lat"],
+            request["pickup_lng"]
+        )
+        
+        if distance <= max_distance:
+            request_with_distance = TowRequest(**request).dict()
+            request_with_distance["distance_km"] = round(distance, 2)
+            nearby_requests.append(request_with_distance)
+    
+    # Sort by distance (closest first)
+    nearby_requests.sort(key=lambda x: x["distance_km"])
+    return nearby_requests
+
+
 @api_router.get("/tow-requests", response_model=List[TowRequest])
 async def get_tow_requests(current_user: User = Depends(get_current_user)):
     if current_user.role == UserRole.CLIENT:
